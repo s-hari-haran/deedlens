@@ -1,8 +1,7 @@
 # DeedLens: AI-Powered Property Document Intelligence
 
 DeedLens is a sophisticated document analysis platform designed to transform unstructured property deeds into structured, searchable intelligence. It leverages advanced OCR, Named Entity Recognition (NER), and Semantic Search to provide deep insights into legal property documents.
-
-![Hero]("./assets/screenshots/home_page.png")
+![Home Page](assets/screenshots/home_page.png)
 
 ## 🚀 Features
 
