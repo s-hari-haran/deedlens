@@ -104,15 +104,16 @@ class EntityResolver:
         if not self.use_embeddings:
             # Fall back to simple string similarity
             return self._string_similarity(text1, text2)
-        
+
+        import numpy as np
         model = self._load_embedding_model()
         embeddings = model.encode([text1, text2])
-        
+
         # Cosine similarity
         similarity = np.dot(embeddings[0], embeddings[1]) / (
             np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1])
         )
-        
+
         return float(similarity)
     
     def _string_similarity(self, s1: str, s2: str) -> float:

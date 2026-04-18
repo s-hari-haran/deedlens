@@ -37,8 +37,9 @@ secrets.toml
 # Project Specific
 data/processed/
 data/embeddings/
-# Keep raw_documents for demo purposes if needed, otherwise uncomment next line
-# data/raw_documents/
+data/uploads/
+data/*.db
+# Keep raw_documents for demo purposes
 
 # OS
 .DS_Store

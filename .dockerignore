@@ -1,0 +1,45 @@
+# Docker ignore patterns
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Docs
+*.md
+!README.md
+
+# Local env (will be mounted separately)
+.env
+
+# Processed data (will be mounted)
+data/processed/
+data/embeddings/
+data/index/
+*.db

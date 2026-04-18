@@ -89,12 +89,21 @@ class OCREngine:
     
     def _validate_backend(self):
         """Validate that the selected backend is available."""
-        if self.backend == OCRBackend.TESSERACT and not TESSERACT_AVAILABLE:
-            raise ImportError("Tesseract not available. Install pytesseract.")
-        if self.backend == OCRBackend.EASYOCR and not EASYOCR_AVAILABLE:
-            raise ImportError("EasyOCR not available. Install easyocr.")
-        if self.backend == OCRBackend.GROQ and not GROQ_AVAILABLE:
-            raise ImportError("Groq client not available. Install groq.")
+        if self.backend == OCRBackend.TESSERACT:
+            try:
+                import pytesseract
+            except ImportError:
+                raise ImportError("Tesseract not available. Install pytesseract.")
+        if self.backend == OCRBackend.EASYOCR:
+            try:
+                import easyocr
+            except ImportError:
+                raise ImportError("EasyOCR not available. Install easyocr.")
+        if self.backend == OCRBackend.GROQ:
+            try:
+                import groq
+            except ImportError:
+                raise ImportError("Groq client not available. Install groq.")
     
     def _get_easyocr_reader(self):
         """Lazy load EasyOCR reader."""
@@ -162,9 +171,21 @@ class OCREngine:
     def _ocr_image_groq(self, image: Image.Image) -> Tuple[str, float]:
         """OCR an image using Groq Vision."""
         if self._groq_client is None:
-            api_key = os.getenv("GROQ_API_KEY")
+            # Try to get from config first, then environment
+            try:
+                from config import get_settings
+                settings = get_settings()
+                api_key = settings.groq_api_key
+            except:
+                api_key = None
+            
             if not api_key:
-                raise ValueError("GROQ_API_KEY not found in environment variables")
+                api_key = os.getenv("GROQ_API_KEY")
+            
+            if not api_key:
+                raise ValueError("GROQ_API_KEY not found. Set it in .env file or environment.")
+            
+            import groq
             self._groq_client = groq.Groq(api_key=api_key)
             
         # Convert image to base64

@@ -1,0 +1,120 @@
+# DeedLens - Docker Compose Configuration
+# Run with: docker-compose up -d
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: deedlens-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: deedlens
+      POSTGRES_PASSWORD: deedlens_secret
+      POSTGRES_DB: deedlens
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./core/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deedlens -d deedlens"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for job queue
+  redis:
+    image: redis:7-alpine
+    container_name: deedlens-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Celery Worker for async processing
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deedlens-worker
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://deedlens:deedlens_secret@postgres:5432/deedlens
+    command: celery -A worker.celery_app worker --loglevel=info --pool=solo --concurrency=2
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Streamlit UI
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deedlens-ui
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+      - ./.streamlit:/app/.streamlit:ro
+    environment:
+      - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://deedlens:deedlens_secret@postgres:5432/deedlens
+    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0 --theme.primaryColor="#FF6B35" --theme.backgroundColor="#F5F0E8" --theme.secondaryBackgroundColor="#EDE8DF" --theme.textColor="#1A1A1A"
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deedlens-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://deedlens:deedlens_secret@postgres:5432/deedlens
+    command: uvicorn api.app:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: deedlens-network
