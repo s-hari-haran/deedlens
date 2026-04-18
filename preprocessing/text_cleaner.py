@@ -35,6 +35,67 @@ class TextCleaner:
         r'vv': 'w',  # vv misread as w
     }
     
+    # Indian state/city name corrections (common OCR mistakes)
+    INDIAN_PLACE_CORRECTIONS = {
+        'Kamataka': 'Karnataka',
+        'Karn ataka': 'Karnataka',
+        'Kamatka': 'Karnataka',
+        'Kemat aka': 'Karnataka',
+        'Bangal ore': 'Bangalore',
+        'Bangaiore': 'Bangalore',
+        'Banga1ore': 'Bangalore',
+        'Chenn ai': 'Chennai',
+        'Chenna1': 'Chennai',
+        'Mumba i': 'Mumbai',
+        'Mumbal': 'Mumbai',
+        'De1hi': 'Delhi',
+        'Delh i': 'Delhi',
+        'Hydera bad': 'Hyderabad',
+        'Hyderab ad': 'Hyderabad',
+        'Ind iranagar': 'Indiranagar',
+        'lndiranagar': 'Indiranagar',
+        'Koramanga la': 'Koramangala',
+        'Koramanga1a': 'Koramangala',
+        'Whitefie1d': 'Whitefield',
+        'Whitefi eld': 'Whitefield',
+        'Tamii Nadu': 'Tamil Nadu',
+        'Tami1 Nadu': 'Tamil Nadu',
+        'Andhra Pra desh': 'Andhra Pradesh',
+        'Te1angana': 'Telangana',
+        'Maharash tra': 'Maharashtra',
+        'Rajast han': 'Rajasthan',
+        'Utta r Pradesh': 'Uttar Pradesh',
+        'Madhya Pra desh': 'Madhya Pradesh',
+        'West Benga1': 'West Bengal',
+    }
+    
+    # Common OCR number/letter confusions
+    NUMBER_LETTER_FIXES = {
+        r'\b1Oth\b': '10th',
+        r'\b1st\b': '1st',  # Keep correct
+        r'\b2Oth\b': '20th',
+        r'\b3Oth\b': '30th',
+        r'\b11th\b': '11th',  # Keep correct
+        r'\b12th\b': '12th',  # Keep correct
+        r'\b1l\b': '11',
+        r'\b1O\b': '10',
+        r'\b2O\b': '20',
+        r'\bOO\b': '00',
+        r'(?<=\d),(?=\d{2},)': ',',  # Fix Indian number formatting
+    }
+    
+    # Currency/Money fixes
+    MONEY_CORRECTIONS = {
+        r'\brs,\b': 'Rs.',
+        r'\bRs,\b': 'Rs.',
+        r'\bRS,\b': 'Rs.',
+        r'\brs\.\s*,': 'Rs.',
+        r'\brs\b(?=\s*\d)': 'Rs.',
+        r'\bRs\s+': 'Rs. ',
+        r'Rs\.\s+': 'Rs. ',
+        r'(?<!\d),(?=\d{2},\d{2},\d{3})': '',  # Fix lakh/crore formatting
+    }
+    
     # Patterns to remove
     NOISE_PATTERNS = [
         r'Page\s*\d+\s*of\s*\d+',  # Page numbers
@@ -90,8 +151,22 @@ class TextCleaner:
     
     def _fix_ocr_errors(self, text: str) -> str:
         """Fix common OCR recognition errors."""
+        # Apply basic OCR corrections
         for pattern, replacement in self.OCR_CORRECTIONS.items():
             text = re.sub(pattern, replacement, text)
+        
+        # Apply Indian place name corrections
+        for wrong, correct in self.INDIAN_PLACE_CORRECTIONS.items():
+            text = re.sub(r'\b' + re.escape(wrong) + r'\b', correct, text, flags=re.IGNORECASE)
+        
+        # Apply number/letter confusion fixes
+        for pattern, replacement in self.NUMBER_LETTER_FIXES.items():
+            text = re.sub(pattern, replacement, text)
+        
+        # Apply money/currency corrections
+        for pattern, replacement in self.MONEY_CORRECTIONS.items():
+            text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+        
         return text
     
     def _remove_noise(self, text: str) -> str:

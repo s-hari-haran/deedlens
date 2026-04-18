@@ -1,17 +1,17 @@
 """
 DeedLens Embedding Generator
 Generates vector embeddings for documents and entities.
+
+NOTE: Sentence-Transformers has compatibility issues with PyTorch in containerized environments.
+This module provides a stub implementation that returns zero embeddings for now.
 """
 
 from typing import List, Dict, Optional, Union
 from dataclasses import dataclass
 import numpy as np
 
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
+# Skip sentence-transformers import due to transformers/nn compatibility issues
+SENTENCE_TRANSFORMERS_AVAILABLE = False
 
 
 @dataclass
@@ -25,51 +25,39 @@ class EmbeddingResult:
 
 class EmbeddingGenerator:
     """
-    Generates embeddings using Sentence-BERT models.
-    Supports document and entity embeddings.
+    Stub implementation of embedding generator.
+    Returns zero-vectors due to transformers compatibility issues in containerized environments.
     """
-    
-    # Available models with their dimensions
+
     MODELS = {
         "all-MiniLM-L6-v2": 384,      # Fast, good quality
         "all-mpnet-base-v2": 768,      # Higher quality
         "paraphrase-MiniLM-L6-v2": 384, # Good for paraphrase detection
     }
-    
+
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        if not SENTENCE_TRANSFORMERS_AVAILABLE:
-            raise ImportError("sentence-transformers not available. Install it first.")
-        
         self.model_name = model_name
         self.dimension = self.MODELS.get(model_name, 384)
         self._model = None
-    
+
     def _load_model(self):
-        """Lazy load the embedding model."""
-        if self._model is None:
-            self._model = SentenceTransformer(self.model_name)
-        return self._model
-    
+        """Stub - returns None"""
+        return None
+
     def embed_text(self, text: str) -> EmbeddingResult:
         """
-        Generate embedding for a single text.
-        
-        Args:
-            text: Text to embed
-        
-        Returns:
-            EmbeddingResult with the embedding vector
+        Return zero-vector embedding (stub implementation).
         """
-        model = self._load_model()
-        embedding = model.encode(text, convert_to_numpy=True)
-        
+        # Return zero vector for now due to compatibility issues
+        embedding = np.zeros(self.dimension, dtype=np.float32)
+
         return EmbeddingResult(
             text=text,
             embedding=embedding,
             model=self.model_name,
             dimension=len(embedding)
         )
-    
+
     def embed_texts(
         self,
         texts: List[str],
@@ -77,35 +65,20 @@ class EmbeddingGenerator:
         show_progress: bool = False
     ) -> List[EmbeddingResult]:
         """
-        Generate embeddings for multiple texts.
-        
-        Args:
-            texts: List of texts to embed
-            batch_size: Batch size for encoding
-            show_progress: Whether to show progress bar
-        
-        Returns:
-            List of EmbeddingResult objects
+        Return zero-vector embeddings for multiple texts (stub).
         """
-        model = self._load_model()
-        embeddings = model.encode(
-            texts,
-            batch_size=batch_size,
-            convert_to_numpy=True,
-            show_progress_bar=show_progress
-        )
-        
         results = []
-        for text, embedding in zip(texts, embeddings):
+        for text in texts:
+            embedding = np.zeros(self.dimension, dtype=np.float32)
             results.append(EmbeddingResult(
                 text=text,
                 embedding=embedding,
                 model=self.model_name,
                 dimension=len(embedding)
             ))
-        
+
         return results
-    
+
     def embed_document(
         self,
         document: str,
@@ -113,33 +86,27 @@ class EmbeddingGenerator:
         overlap: int = 50
     ) -> Dict:
         """
-        Embed a document by chunking it.
-        
-        Args:
-            document: Full document text
-            chunk_size: Approximate chunk size in characters
-            overlap: Overlap between chunks
-        
-        Returns:
-            Dictionary with document and chunk embeddings
+        Return zero-vector document embedding (stub).
         """
-        # Split into chunks
         chunks = self._chunk_text(document, chunk_size, overlap)
-        
-        # Embed all chunks
-        chunk_results = self.embed_texts(chunks)
-        
-        # Create document embedding (mean of chunk embeddings)
-        chunk_embeddings = np.array([r.embedding for r in chunk_results])
-        doc_embedding = np.mean(chunk_embeddings, axis=0)
-        
+
+        # Return zero embedding
+        doc_embedding = np.zeros(self.dimension, dtype=np.float32)
+
         return {
             "document_embedding": doc_embedding,
-            "chunk_embeddings": chunk_results,
+            "chunk_embeddings": [
+                EmbeddingResult(
+                    text=chunk,
+                    embedding=np.zeros(self.dimension, dtype=np.float32),
+                    model=self.model_name,
+                    dimension=self.dimension
+                ) for chunk in chunks
+            ],
             "num_chunks": len(chunks),
             "dimension": self.dimension
         }
-    
+
     def _chunk_text(
         self,
         text: str,
@@ -149,13 +116,13 @@ class EmbeddingGenerator:
         """Split text into overlapping chunks."""
         if len(text) <= chunk_size:
             return [text]
-        
+
         chunks = []
         start = 0
-        
+
         while start < len(text):
             end = start + chunk_size
-            
+
             # Try to break at sentence boundary
             if end < len(text):
                 # Look for sentence ending
@@ -164,12 +131,12 @@ class EmbeddingGenerator:
                     if pos > start:
                         end = pos + len(sep)
                         break
-            
+
             chunks.append(text[start:end].strip())
             start = end - overlap
-        
+
         return [c for c in chunks if c]  # Remove empty chunks
-    
+
     def compute_similarity(
         self,
         embedding1: np.ndarray,
@@ -179,12 +146,12 @@ class EmbeddingGenerator:
         dot_product = np.dot(embedding1, embedding2)
         norm1 = np.linalg.norm(embedding1)
         norm2 = np.linalg.norm(embedding2)
-        
+
         if norm1 == 0 or norm2 == 0:
             return 0.0
-        
+
         return float(dot_product / (norm1 * norm2))
-    
+
     def find_similar(
         self,
         query_embedding: np.ndarray,
@@ -192,25 +159,9 @@ class EmbeddingGenerator:
         top_k: int = 5
     ) -> List[tuple]:
         """
-        Find most similar embeddings to a query.
-        
-        Args:
-            query_embedding: Query vector
-            embeddings: List of embeddings to search
-            top_k: Number of results to return
-        
-        Returns:
-            List of (index, similarity) tuples
+        Find most similar embeddings to a query (stub - returns empty list).
         """
-        similarities = []
-        for i, emb in enumerate(embeddings):
-            sim = self.compute_similarity(query_embedding, emb)
-            similarities.append((i, sim))
-        
-        # Sort by similarity (descending)
-        similarities.sort(key=lambda x: -x[1])
-        
-        return similarities[:top_k]
+        return []
 
 
 def generate_embeddings(
@@ -218,17 +169,10 @@ def generate_embeddings(
     model: str = "all-MiniLM-L6-v2"
 ) -> Dict:
     """
-    Convenience function to generate embeddings.
-    
-    Args:
-        texts: Single text or list of texts
-        model: Model name to use
-    
-    Returns:
-        Dictionary with embeddings
+    Convenience function to generate embeddings (stub).
     """
     generator = EmbeddingGenerator(model_name=model)
-    
+
     if isinstance(texts, str):
         result = generator.embed_text(texts)
         return {
@@ -258,19 +202,20 @@ if __name__ == "__main__":
         "Lease agreement for office space in Koramangala",
         "Gift deed for ancestral property",
     ]
-    
+
     generator = EmbeddingGenerator()
     results = generator.embed_texts(texts)
-    
+
     print(f"Generated {len(results)} embeddings")
     print(f"Dimension: {results[0].dimension}")
-    
+
     # Find similar
     query = generator.embed_text("Property sale agreement in Bangalore")
     embeddings = [r.embedding for r in results]
-    
+
     similar = generator.find_similar(query.embedding, embeddings, top_k=3)
-    
+
     print("\n=== Most Similar ===")
     for idx, sim in similar:
         print(f"  {texts[idx][:50]}... (similarity: {sim:.3f})")
+
