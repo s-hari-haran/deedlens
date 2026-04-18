@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: deedlens-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
+    startCommand: uvicorn api.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DATABASE_URL
+        fromDatabase:
+          name: deedlens-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: deedlens-redis
+          property: connectionString
+      - key: OCR_BACKEND
+        value: easyocr
+      - key: DEBUG
+        value: "false"
+    autoDeploy: true
+
+  - type: background_worker
+    name: deedlens-worker
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
+    startCommand: celery -A worker.celery_app worker --loglevel=info --pool=solo
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DATABASE_URL
+        fromDatabase:
+          name: deedlens-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: deedlens-redis
+          property: connectionString
+
+databases:
+  - name: deedlens-postgres
+    databaseName: deedlens
+    user: deedlens
+    plan: free
+
+  - name: deedlens-redis
+    ipWhitelist: []
+    plan: free

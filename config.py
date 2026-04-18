@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     
     # Database
     database_url: str = Field(
-        default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:////tmp/deedlens.db"),
+        default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///./data/deedlens.db"),
         description="PostgreSQL or SQLite connection string"
     )
     
