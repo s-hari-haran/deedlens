@@ -45,5 +45,4 @@ databases:
     plan: free
 
   - name: deedlens-redis
-    ipWhitelist: []
     plan: free
